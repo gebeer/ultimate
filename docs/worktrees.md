@@ -27,10 +27,11 @@ For `server/` or `shared/` changes, an authorized `restart` works once the runni
 ### Standing permission to push this repository
 
 The user authorizes the top-level agent to commit verified changes, land them, and push the destination branch
-(normally `main`) to this repository's GitHub remote, `origin` (`HazAT/ultimate`), without asking again. This permission
+(normally `main`) to this fork's GitHub remote, `origin` (`gebeer/ultimate`), without asking again.
+Push only to `origin`; never push to `upstream` (`HazAT/ultimate`). This permission
 applies to this repository whether public or private, not to other repositories. `workspace submit` covers this: the
 lander pushes after its checks because `lander.push` is set. After a synchronous `workspace land`, which never pushes,
-push the landed branch explicitly (for example, `git -C /home/haza/Projects/ultimate push origin main`). Subagents commit and report; only the top-level agent pushes after verification and integration.
+push the landed branch explicitly (for example, `git -C /home/gbr/work/ai/ultimate push origin main`). Subagents commit and report; only the top-level agent pushes after verification and integration.
 
 Use normal, non-force pushes only. Remote advancement or a non-fast-forward rejection is normal: fetch, inspect the
 incoming log and diff, and merge non-destructively in an isolated workspace, preserving both histories. Rerun checks,

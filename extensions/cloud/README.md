@@ -23,7 +23,8 @@ A project is its GitHub repository (`lib/project-identity.ts`): the `origin` rem
 
 ## Cloud backups
 
-The Worker lives in the private repository `HazAT/ultimate-fleet` and is deployed from there. Every `/sync/*` route
+The upstream Worker implementation lives in the private repository `HazAT/ultimate-fleet`; this does not imply
+that a fork's cloud is configured or hosted there. Every `/sync/*` route
 needs `Authorization: Bearer <ULTIMATE_CLOUD_TOKEN>`; `<p>` is the SHA-256 hex of the project key:
 
 - `PUT|GET /sync/snapshots/<p>/<id>/<name>`: the encrypted objects of one backup (`snapshot.ts`).

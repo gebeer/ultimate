@@ -43,9 +43,8 @@ A project is a forest of conversation trees, like commit histories.
 
 `extensions/lineage/README.md` has the mechanics.
 
-**Cloud backups** (`extensions/cloud/README.md`): a project backs up to the user's Worker
-(the private repo `HazAT/ultimate-fleet`) from the status line, and `pnpm restore <name>` installs a backup on another
-machine.
+**Cloud backups** (`extensions/cloud/README.md`): when configured, a project backs up to the user's Worker
+from the status line, and `pnpm restore <name>` installs a backup on another machine.
 
 ## Layers and how they reload
 
@@ -79,7 +78,8 @@ guide to writing extensions, and copy the closest existing one (`status-line`, `
 ## Push permission
 
 The top-level agent may commit verified work, land it and normally push the destination branch to `origin`
-(`HazAT/ultimate`), public or private, without asking. `workspace submit` runs checks and pushes; synchronous
+(`gebeer/ultimate`), public or private, without asking. Push only to `origin`; never push to `upstream`
+(`HazAT/ultimate`). `workspace submit` runs checks and pushes; synchronous
 `workspace land` never pushes. Subagents commit and report, never push. Preserve remote advancement with a
 non-destructive merge in an isolate, inspect it and rerun checks; stop for ambiguous conflicts, failed checks,
 security concerns or any force push/history rewrite. Never push secrets or unrelated unverified work.
