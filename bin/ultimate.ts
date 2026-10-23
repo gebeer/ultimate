@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env -S NODE_VERSION=26 /home/gbr/.nvm/nvm-exec node
 import { fork, spawn } from 'node:child_process'
 import type { ChildProcess } from 'node:child_process'
 import { once } from 'node:events'
