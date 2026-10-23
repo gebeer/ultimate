@@ -1,4 +1,4 @@
-import { mkdir, symlink, writeFile } from 'node:fs/promises'
+import { mkdir, rm, symlink, writeFile } from 'node:fs/promises'
 import { request as httpRequest } from 'node:http'
 import { join } from 'node:path'
 import { expect, test } from 'vitest'
@@ -65,6 +65,8 @@ test('serves source and extension assets, not private state or symlink targets',
   )
   expect((await request('/')).status).toBe(200)
   expect((await request('/api/models')).status).toBe(200)
+  expect((await request('/@id/__x00__virtual:ultimate/web-facets')).status).toBe(200)
+  expect((await request('/@react-refresh')).status).toBe(200)
 })
 
 test('rejects raw URL normalization, HTML fallbacks and wrapped optimized dependency paths', async () => {
@@ -107,6 +109,9 @@ test('rejects raw URL normalization, HTML fallbacks and wrapped optimized depend
   expect((await fetch(server.url + '/@fs/' + join(ultimateRoot, 'web/index.html'))).status).toBe(
     200,
   )
+  await rm(join(ultimateRoot, 'web/index.html'))
+  await symlink(privateFile, join(ultimateRoot, 'web/index.html'))
+  expect(await status('/missing-spa-route')).toBe(403)
 })
 
 test('does not inject private referenced source contents into browser source maps', async () => {
@@ -156,6 +161,11 @@ test('does not inject private referenced source contents into browser source map
   for (const [index, comment] of [
     fromObject(safeMap).toComment(),
     '//# sourceMappingURL=safe.map',
+    fromObject({
+      ...safeMap,
+      sourceRoot: 'unpublished-sources',
+      sourcesContent: ['public original source'],
+    }).toComment(),
   ].entries()) {
     const path = `/safe-${index}.js`
     await writeFile(join(web, path), `export const value = 1\n${comment}`)
