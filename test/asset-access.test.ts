@@ -1,6 +1,8 @@
 import { mkdir, symlink, writeFile } from 'node:fs/promises'
+import { request as httpRequest } from 'node:http'
 import { join } from 'node:path'
 import { expect, test } from 'vitest'
+import { fromObject } from 'convert-source-map'
 import { fixture } from './server-fixture.ts'
 
 const dummy = 'SYNTHETIC_PRIVATE_VALUE'
@@ -63,4 +65,104 @@ test('serves source and extension assets, not private state or symlink targets',
   )
   expect((await request('/')).status).toBe(200)
   expect((await request('/api/models')).status).toBe(200)
+})
+
+test('rejects raw URL normalization, HTML fallbacks and wrapped optimized dependency paths', async () => {
+  const { server, options } = await fixture(false, undefined, true)
+  const { ultimateRoot, home } = options
+  const privateFile = join(ultimateRoot, '.ultimate/private-fixture.json')
+  await writeFile(privateFile, JSON.stringify({ value: dummy }))
+  await symlink(privateFile, join(ultimateRoot, 'web/leak.html'))
+  await mkdir(join(ultimateRoot, 'web/directory'))
+  await symlink(privateFile, join(ultimateRoot, 'web/directory/index.html'))
+  const cacheFile = join(home, 'vite/deps/linked.json')
+  await mkdir(join(home, 'vite/deps'), { recursive: true })
+  await symlink(privateFile, cacheFile)
+  // node:http sends the raw path. fetch would normalize backslashes before sending it.
+  const status = (path: string) =>
+    new Promise<number | undefined>((resolve, reject) => {
+      const request = httpRequest(
+        server.url,
+        { path, headers: { accept: 'text/html' } },
+        (response) => {
+          response.resume()
+          response.on('end', () => resolve(response.statusCode))
+        },
+      )
+      request.on('error', reject)
+      request.end()
+    })
+  for (const path of [
+    '/@fs/' + join(ultimateRoot, 'web') + '\\..\\.ultimate/private-fixture.json',
+    '/@fs/' + privateFile.replaceAll('/', '%2f'),
+    '/@fs/' + privateFile.slice(1),
+    '/leak',
+    '/directory/',
+    '/@id/' + cacheFile + '?import',
+  ])
+    expect({ path, status: await status(path) }).toEqual({ path, status: 403 })
+  await expect(server.vite.transformRequest('/@id/' + cacheFile + '?import')).rejects.toThrow(
+    'Asset access forbidden',
+  )
+  expect((await fetch(server.url + '/@fs/' + join(ultimateRoot, 'web/index.html'))).status).toBe(
+    200,
+  )
+})
+
+test('does not inject private referenced source contents into browser source maps', async () => {
+  const { server, options } = await fixture(false, undefined, true)
+  const { ultimateRoot } = options
+  const projectPrivate = join(ultimateRoot, '.ultimate/private-fixture.json')
+  await writeFile(projectPrivate, JSON.stringify({ value: dummy }))
+  const map = { version: 3, sources: [projectPrivate], names: [], mappings: 'AAAA' }
+  const web = join(ultimateRoot, 'web')
+  await symlink(projectPrivate, join(web, 'linked-source.json'))
+  await symlink(join(ultimateRoot, '.ultimate'), join(web, 'linked-root'))
+  await writeFile(join(ultimateRoot, '.env'), dummy)
+  await writeFile(join(web, 'external.map'), JSON.stringify(map))
+  const privateMap = join(ultimateRoot, '.ultimate/private.map')
+  await writeFile(privateMap, JSON.stringify({ ...map, sourcesContent: [dummy] }))
+  await symlink(privateMap, join(web, 'linked.map'))
+  const comments = [
+    fromObject(map).toComment(),
+    fromObject(map).toComment({ encoding: 'uri' }),
+    fromObject({ ...map, sources: ['linked-source.json'] }).toComment(),
+    fromObject({
+      ...map,
+      sources: ['private-fixture.json'],
+      sourceRoot: 'linked-root',
+    }).toComment(),
+    fromObject({
+      ...map,
+      sources: [projectPrivate.replace('.ultimate', '%2eultimate')],
+    }).toComment(),
+    fromObject({ ...map, sources: ['../.env'] }).toComment(),
+    '//# sourceMappingURL=external.map',
+    '//# sourceMappingURL=' + privateMap,
+    '//# sourceMappingURL=linked.map',
+  ]
+  for (const [index, comment] of comments.entries()) {
+    const path = `/unsafe-${index}.js`
+    await writeFile(join(web, path), `export const value = 1\n${comment}`)
+    await expect(server.vite.transformRequest(path)).rejects.toThrow('Asset access forbidden')
+    const response = await fetch(server.url + path)
+    expect(response.status).toBeGreaterThanOrEqual(400)
+    expect(await response.text()).not.toContain(dummy)
+  }
+  // Valid authored maps retain their source contents instead of being stripped or disabled.
+  await writeFile(join(web, 'original.js'), 'public original source')
+  const safeMap = { ...map, sources: ['original.js'] }
+  await writeFile(join(web, 'safe.map'), JSON.stringify(safeMap))
+  for (const [index, comment] of [
+    fromObject(safeMap).toComment(),
+    '//# sourceMappingURL=safe.map',
+  ].entries()) {
+    const path = `/safe-${index}.js`
+    await writeFile(join(web, path), `export const value = 1\n${comment}`)
+    const result = await server.vite.transformRequest(path)
+    expect(
+      result?.map && 'sourcesContent' in result.map ? result.map.sourcesContent : [],
+    ).toContain('public original source')
+    expect((await fetch(server.url + path)).status).toBe(200)
+  }
 })

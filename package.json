@@ -36,6 +36,7 @@
     "class-variance-authority": "0.7.1",
     "cmdk": "1.1.1",
     "cn": "0.4.0",
+    "convert-source-map": "2.0.0",
     "log-update": "8.0.0",
     "lucide-react": "1.49.0",
     "ogl": "^1.0.11",
@@ -52,6 +53,7 @@
     "vite-plus": "0.3.1"
   },
   "devDependencies": {
+    "@types/convert-source-map": "2.0.3",
     "@types/node": "26.0.0",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
