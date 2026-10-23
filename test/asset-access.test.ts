@@ -67,6 +67,9 @@ test('serves source and extension assets, not private state or symlink targets',
   expect((await request('/api/models')).status).toBe(200)
   expect((await request('/@id/__x00__virtual:ultimate/web-facets')).status).toBe(200)
   expect((await request('/@react-refresh')).status).toBe(200)
+  // The fixture copies source but shares installed dependencies outside ultimateRoot.
+  expect((await request('/@vite/client')).status).toBe(200)
+  expect((await request('/@vite/env')).status).toBe(200)
 })
 
 test('rejects raw URL normalization, HTML fallbacks and wrapped optimized dependency paths', async () => {

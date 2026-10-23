@@ -34,7 +34,9 @@ export function assetAccess(
     ...privateRoots.map((root) => ({ root, allowed: false })),
     ...allow.map((root) => ({ root, allowed: true })),
   ].toSorted((a, b) => b.root.length - a.root.length)
-  const allowed = (file: string) => rules.find(({ root }) => contains(root, file))?.allowed === true
+  const runtimeFiles = new Set<string>()
+  const allowed = (file: string) =>
+    runtimeFiles.has(file) || rules.find(({ root }) => contains(root, file))?.allowed === true
   let config: ResolvedConfig
   const permitted = (file: string) => allowed(file) && isFileLoadingAllowed(config, file)
   const accessible = async (file: string) => {
@@ -112,7 +114,15 @@ export function assetAccess(
           await checkMap(this.getCombinedSourcemap(), id.split(/[?#]/)[0])
         },
       },
-      configureServer(server) {
+      async configureServer(server) {
+        // Vite's own runtime can live outside a copied source tree (for example in tests).
+        for (const id of ['/@vite/client', '/@vite/env']) {
+          const module = await server.environments.client.pluginContainer.resolveId(id)
+          if (module && isAbsolute(module.id)) {
+            runtimeFiles.add(module.id)
+            runtimeFiles.add(await realpath(module.id))
+          }
+        }
         // Run before transforms, the module cache and public-file serving. Vite's fs.allow
         // alone trusts imported modules and does not check symlink targets or public files.
         const guard = (request: IncomingMessage, response: ServerResponse, next: () => void) => {
