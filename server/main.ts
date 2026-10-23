@@ -22,6 +22,7 @@ import { admit, createAccess } from './request-security.ts'
 import { writeProject } from './project.ts'
 import { reportCore } from './supervisor-protocol.ts'
 import { viteLogger } from './vite-logger.ts'
+import { assetAccess } from './asset-access.ts'
 import type { Notice } from '../shared/protocol.ts'
 
 const send = (message: ChildMessage) => process.send?.(message)
@@ -100,6 +101,8 @@ export async function prepareServer(options: Partial<ServerOptions> = {}) {
   // A vite.config.ts change restarts Vite with a new watcher; listeners move to each new one.
   const restarted = new Set<(watcher: ViteDevServer['watcher']) => void>()
   reportCore({ type: 'web', state: 'preparing' })
+  const cacheDir = resolvePath(host.home, 'vite')
+  const assets = assetAccess(ultimateRoot, projectRoot, options.userHome ?? homedir(), cacheDir)
   const vite = await createViteServer({
     customLogger: viteLogger(),
     clearScreen: false,
@@ -110,14 +113,15 @@ export async function prepareServer(options: Partial<ServerOptions> = {}) {
       allowedHosts: true,
       hmr: { server: hmr },
       fs: {
-        allow: [ultimateRoot, projectRoot, resolvePath(options.userHome ?? homedir(), '.ultimate')],
+        allow: assets.allow,
       },
     },
     appType: 'spa',
     // One dependency cache per state home, so tests and instances never re-optimize the live instance's page.
-    cacheDir: resolvePath(host.home, 'vite'),
+    cacheDir,
     resolve: { alias: { '@': resolvePath(ultimateRoot, 'web/src') } },
     plugins: [
+      assets.plugin,
       extensionModules(ultimateRoot, projectRoot, host.userHome),
       {
         name: 'ultimate:watchers',
