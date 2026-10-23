@@ -11,7 +11,6 @@
       { "command": "pnpm check", "timeout": 120 },
       { "command": "pnpm test", "timeout": 180 },
       { "command": "pnpm test:e2e", "timeout": 180 }
-    ],
-    "push": "origin"
+    ]
   }
 }
