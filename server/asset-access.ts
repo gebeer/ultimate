@@ -55,7 +55,7 @@ export function assetAccess(
     file: string,
   ) => {
     // Mirror Vite's source-root resolution, but fail closed instead of reading from cwd.
-    const root = await realpath(resolve(dirname(file), map.sourceRoot || ''))
+    let root: string | undefined
     for (const [index, source] of (map.sources ?? []).entries()) {
       if (
         !source ||
@@ -64,6 +64,7 @@ export function assetAccess(
         /^(?:dep:|browser-external:|virtual:)/.test(source)
       )
         continue
+      root ??= await realpath(resolve(dirname(file), map.sourceRoot || ''))
       await assertAccessible(resolve(root, decodeURI(source).split(/[?#]/)[0]))
     }
   }
@@ -124,6 +125,8 @@ export function assetAccess(
               : path.startsWith('/@id/')
                 ? path.slice('/@id/'.length)
                 : undefined
+            // Wrapped virtual/bare module IDs are resolved by plugins, not filesystem URLs.
+            if (path.startsWith('/@id/') && filePath && !isAbsolute(filePath)) return next()
             const files =
               filePath && isAbsolute(filePath)
                 ? [resolve(filePath)]
