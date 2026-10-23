@@ -12,8 +12,8 @@ Read worker reports and diffs; rerun checks only for missing or thin evidence, r
 workers, `server/` or `shared/` changes, or surprises in the diff, then land and call `workspace submit`.
 The lander is the final gate: it runs every configured check (here `pnpm check`, then `pnpm test`, then `pnpm test:e2e`, sequentially) on the merged result
 and reports back, landed or not, with findings.
-It fixes small failures when the project configures it to; on success it fast-forwards the branch and pushes to
-`lander.push` (here `origin`), so keep working while it runs.
+It fixes small failures when the project configures it to; on success it fast-forwards the branch.
+Automatic push stays disabled here (`lander.push` is unset); a push is a separate, explicitly authorized step.
 Its progress shows live on the submit tool card, with expandable steps, and its report as an outcome card, both in
 the submitting conversation; the source's @lander conversation, pinned in the sidebar's agents group, keeps
 the full log and shows as working in the Agents tab while it lands. It runs the `lander` agent
@@ -26,16 +26,20 @@ For `server/` or `shared/` changes, an authorized `restart` works once the runni
 
 ### Standing permission to push this repository
 
-The user authorizes the top-level agent to commit verified changes, land them, and push the destination branch
-(normally `main`) to this fork's GitHub remote, `origin` (`gebeer/ultimate`), without asking again.
-Push only to `origin`; never push to `upstream` (`HazAT/ultimate`). This permission
-applies to this repository whether public or private, not to other repositories. `workspace submit` covers this: the
-lander pushes after its checks because `lander.push` is set. After a synchronous `workspace land`, which never pushes,
-push the landed branch explicitly (for example, `git -C /home/gbr/work/ai/ultimate push origin main`). Subagents commit and report; only the top-level agent pushes after verification and integration.
+The top-level agent may commit verified changes and land them, but there is no standing permission to push.
+Each push needs the user's explicit authorization for the remote, branch and commits; approval does not cover
+future pushes. Permission to edit, commit, merge or land is not permission to push. If a push is needed and not
+already explicitly requested, ask through a decision card first.
+
+Push only to this fork's `origin` (`gebeer/ultimate`); never push to `upstream` (`HazAT/ultimate`). Keep automatic
+lander push disabled (`lander.push` unset), and do not enable a deployment handoff for a one-time approval.
+Land locally, then perform only the approved push separately (for example,
+`git -C /home/gbr/work/ai/ultimate push origin main`). `workspace land` never pushes.
+Subagents commit and report; only the top-level agent performs an authorized push after verification and integration.
 
 Use normal, non-force pushes only. Remote advancement or a non-fast-forward rejection is normal: fetch, inspect the
 incoming log and diff, and merge non-destructively in an isolated workspace, preserving both histories. Rerun checks,
-then land and push normally without asking again. Stop and report ambiguous conflicts,
+then land locally. Push only if the user's specific authorization covers the resulting range; otherwise ask again. Stop and report ambiguous conflicts,
 failing checks, security concerns, or a situation requiring a force push or history rewrite—not ordinary remote
 advancement. Do not push secrets or unrelated unverified work.
-This standing permission does not authorize releases, publishing, deployments, or GitHub issue/PR changes.
+Push approval does not authorize releases, publishing, deployments, or GitHub issue/PR changes.

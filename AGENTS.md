@@ -77,10 +77,12 @@ guide to writing extensions, and copy the closest existing one (`status-line`, `
 
 ## Push permission
 
-The top-level agent may commit verified work, land it and normally push the destination branch to `origin`
-(`gebeer/ultimate`), public or private, without asking. Push only to `origin`; never push to `upstream`
-(`HazAT/ultimate`). `workspace submit` runs checks and pushes; synchronous
-`workspace land` never pushes. Subagents commit and report, never push. Preserve remote advancement with a
+The top-level agent may commit verified work and land it, but each push requires the user's explicit authorization
+for that remote, branch and commits. Approval to edit, commit or land is not permission to push, and a push approval
+does not cover future pushes. Push only to `origin` (`gebeer/ultimate`); never push to `upstream` (`HazAT/ultimate`).
+Keep automatic lander push disabled: do not set `lander.push` or use a deployment handoff for a one-time approval.
+Land locally, then perform only the separately authorized push. `workspace land` never pushes.
+Subagents commit and report, never push. Preserve remote advancement with a
 non-destructive merge in an isolate, inspect it and rerun checks; stop for ambiguous conflicts, failed checks,
 security concerns or any force push/history rewrite. Never push secrets or unrelated unverified work.
 This permission does not cover other repositories, releases, publishing, deployments or GitHub issue/PR changes.
